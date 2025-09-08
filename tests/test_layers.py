@@ -1,4 +1,3 @@
-import math
 from src.atmo_layers import classify_layer, describe_altitude
 
 def name_at(km: float):

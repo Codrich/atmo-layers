@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Optional, List, Dict, Any, Iterable, Tuple
 import argparse
 import csv
 import json
-import math
 import os
 import sys
 
@@ -112,7 +111,6 @@ def describe_altitude(altitude: float, unit: str = "km") -> Dict[str, Any]:
 
 # ---------- Batch utilities ----------
 
-from typing import Iterable, Tuple
 
 def read_batch_csv(path: str) -> Iterable[Tuple[float, str]]:
     """
