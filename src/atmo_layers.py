@@ -7,6 +7,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from typing import cast
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 KM_PER_MILE = 1.609344
@@ -112,6 +113,7 @@ def describe_altitude(altitude: float, unit: str = "km") -> Dict[str, Any]:
 
 # ---------- Batch utilities ----------
 
+from typing import Iterable, Tuple  # ensure these are already imported at the top
 
 def read_batch_csv(path: str) -> Iterable[Tuple[float, str]]:
     """
@@ -122,20 +124,29 @@ def read_batch_csv(path: str) -> Iterable[Tuple[float, str]]:
     """
     with open(path, newline="", encoding="utf-8") as f:
         r = csv.DictReader(f)
-        if "altitude" not in r.fieldnames:
+
+        # Make fieldnames non-optional for membership tests (mypy-friendly)
+        names: tuple[str, ...] = tuple(r.fieldnames or ())
+
+        if "altitude" not in names:
             raise ValueError("CSV must contain a column named 'altitude'.")
-        unit_field = "unit" if "unit" in r.fieldnames else None
+
+        has_unit = "unit" in names
+
         for i, row in enumerate(r, start=2):
-            if row.get("altitude") in (None, ""):
+            raw_alt = row.get("altitude")
+            if raw_alt in (None, ""):
                 raise ValueError(f"Row {i}: empty altitude")
             try:
-                alt = float(row["altitude"])
+                alt = float(cast(str, raw_alt))
             except ValueError:
-                raise ValueError(f"Row {i}: altitude must be a number, got {row['altitude']!r}")
-            unit = row[unit_field].strip().lower() if unit_field else "km"
-            if unit not in {"km", "mi"}:
-                raise ValueError(f"Row {i}: unit must be 'km' or 'mi', got {unit!r}")
-            yield alt, unit
+                raise ValueError(f"Row {i}: altitude must be a number, got {raw_alt!r}")
+
+            unit_val = (row.get("unit") or "km").strip().lower() if has_unit else "km"
+            if unit_val not in {"km", "mi"}:
+                raise ValueError(f"Row {i}: unit must be 'km' or 'mi', got {unit_val!r}")
+
+            yield alt, unit_val
 
 def write_results(path: str, reports: List[Dict[str, Any]]) -> None:
     ext = os.path.splitext(path)[1].lower()
@@ -163,6 +174,7 @@ def write_results(path: str, reports: List[Dict[str, Any]]) -> None:
     else:
         raise ValueError("Output file must end with .csv, .json, or .jsonl")
 
+
 def _print_human(report: Dict[str, Any]) -> None:
     inp = report["input"]
     header = f"Atmospheric Layer Report @ {inp['altitude']} {inp['unit']} (~{inp['altitude_km']} km)"
@@ -178,10 +190,12 @@ def _print_human(report: Dict[str, Any]) -> None:
     print(f"Notable phenomena: {report['phenomena']}")
     print(f"Note: {report['references_note']}")
 
+
 def _self_checks() -> None:
     def layer_at(km: float) -> str:
         L = classify_layer(km)
         return L.name if L else "None"
+
     cases = {
         0.0: "Troposphere",
         14.9999: "Troposphere",
@@ -198,6 +212,7 @@ def _self_checks() -> None:
     fails = [(km, exp, layer_at(km)) for km, exp in cases.items() if layer_at(km) != exp]
     if fails:
         raise AssertionError(f"Self-checks failed: {fails}")
+
 
 # ---------- FastAPI (optional) ----------
 
@@ -236,7 +251,7 @@ def create_app():
 
 def _serve(host: str = "0.0.0.0", port: int = 8000) -> None:
     try:
-        import uvicorn  # type: ignore
+        import uvicorn
     except Exception as e:
         raise RuntimeError("uvicorn is not installed. Run `pip install uvicorn`.") from e
     app = create_app()
