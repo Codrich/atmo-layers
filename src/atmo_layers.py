@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Iterable, Tuple
+
 import argparse
 import csv
 import json
 import os
 import sys
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 KM_PER_MILE = 1.609344
 
